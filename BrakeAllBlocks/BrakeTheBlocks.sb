@@ -1,0 +1,463 @@
+GraphicsWindow.Show()
+GraphicsWindow.Top = (Desktop.Height/2 - 250)
+GraphicsWindow.Left = (Desktop.Width/2 - 370)
+GraphicsWindow.Width = 740
+GraphicsWindow.Height = 500
+GraphicsWindow.Title = "BRAKE ALL BLOCKS"
+GraphicsWindow.CanResize = "False"
+GraphicsWindow.MouseDown = OnMouseDown
+GraphicsWindow.MouseUp = OnMouseUp
+GraphicsWindow.MouseMove = OnMouseMove
+Controls.ButtonClicked = OnButtonClick
+
+level = 1
+lastlevel = 4
+layout = 0
+speedcorection = 1.3
+path = Program.Directory
+
+colorobstacles[0] = "royalblue"
+colorobstacles[1] = "yellow"
+colorobstacles[2] = "red"
+colorobstacles[3] = "orange"
+colorobstacles[4] = "white"
+colorsight[0] = "gold"
+colorsight[1] = "darkred"
+colorsight[2] = "white"
+colorsight[3] = "yellow"
+colorsight[4] = "black"
+bg[0][0] = path+"/bg/wall0.jpg"
+bg[1][0] = path+"/bg/wall1.jpg"
+bg[2][0] = path+"/bg/wall2.jpg"
+bg[3][0] = path+"/bg/wall3.jpg"
+bg[3][1] = -15
+bg[3][2] = -15
+bg[4][0] = path+"/bg/wall4.jpg"
+bg[4][1] = -50
+bg[4][2] = 0
+
+'' --->                                                                                                                                                                                                  BEGIN
+begin:
+x2=0
+y2=0
+goloop = 0
+destold = 0
+lastClick = 0
+ballplaced = 0
+release = 0
+isfound = 0
+lastfound = 0
+hint = "1=0;2=0;3=0;4=0"
+DrawLevel()
+''ShowHint()
+
+loop:
+If goloop = 1 Then
+  Program.Delay(delay)
+  Sound.PlayClick()
+  HideObstacle()
+  goloop = 0
+  Main()
+  If lastfound = 1 Then
+    Goto end
+  EndIf
+EndIf
+Goto loop
+
+end:
+Program.Delay(delay)
+If lastClick = 1 then
+  Sound.PlayClick()
+EndIf
+Shapes.Animate(ball, px-7, py-7, speed)
+HideObstacle()
+
+win = 1
+For i = 1 To Array.GetItemCount(obstacles)
+  If obstacles[i][1][1]>0 Then
+    win = 0
+  EndIf
+EndFor
+If win = 1 Then
+  If level < lastlevel then
+    GraphicsWindow.ShowMessage("Браво!","")
+    level = level + 1
+    Goto begin
+  Else
+    GraphicsWindow.ShowMessage("Спечели!", "Поздравления! ")
+    Restart = Controls.AddButton("Нова игра", 347, 238)
+  EndIf
+Else
+  GraphicsWindow.ShowMessage("Опитай отново!","")
+  Goto begin
+EndIf
+
+onemoretime:
+If Controls.LastClickedButton = Restart then
+  level = 1
+  Goto begin
+EndIf
+Goto onemoretime
+
+'' --->                                                                                                                                                                                                  MAIN
+Sub Main
+  Shapes.Animate(ball, px-7, py-7, speed)
+  delay = speed*(0.9)
+  If delay > 1100 Then
+    delay = 800
+  EndIf
+  If isfound = 1 Then
+    GetNextDirection()
+    FindIntersection()
+  EndIf
+  goloop = 1
+EndSub
+
+'' --->                                                                                                                                                                                                  FIND DIRECTION
+Sub GetNextDirection
+  x3 = obstacles[dest][1][1]
+  y3 = obstacles[dest][1][2]
+  x4 = obstacles[dest][2][1]
+  y4 = obstacles[dest][2][2]
+  If px=x1 Or x4=x3 Then
+    x1 = x1+0.005
+    x3 = x3+0.005
+  EndIf
+  k1 = (py-y1)/(px-x1)
+  m1 = (y1*px - py*x1)/(px-x1)
+  k2 = (y4-y3)/(x4-x3)
+  m2 = (y3*x4 - y4*x3)/(x4-x3)
+  tgFi = (k1-k2)/(k1*k2+1)
+  k1 = Math.ArcTan(k2) - Math.ArcTan(tgFi)
+  k1 = Math.Tan(k1)
+  m1 = py - k1*px
+  x1=px
+  y1=py
+  k2old=k2
+  m2old=m2
+EndSub
+
+'' --->                                                                                                                                                                                                  FIND INTERSECTION
+Sub FindIntersection
+  isfound = 0
+  px = 2000
+  py = 2000
+  destold = dest
+  count = Array.GetItemCount(obstacles)
+  For i = 1 To count
+    x3 = obstacles[i][1][1]
+    y3 = obstacles[i][1][2]
+    x4 = obstacles[i][2][1]
+    y4 = obstacles[i][2][2]
+    If (x4-x3) = 0 Then
+      x3 = x3+0.005
+    EndIf
+    k2 = (y4-y3)/(x4-x3)
+    m2 = (y3*x4 - y4*x3)/(x4-x3)  
+    temppx=(-1)*(m1-m2)/(k1-k2)
+    temppy=(-1)*((-k2)*temppx-m2)    
+    If (k2old*temppx-temppy+m2old)*(k2old*x2-y2+m2old)>0 Then                
+      If (x3<temppx and temppx<x4) or (x3>temppx and temppx>x4) Or (y3<temppy and temppy<y4) or (y3>temppy and temppy>y4) Then 
+        If Math.Abs(temppx - x1) < Math.Abs(px - x1) Then
+          px = temppx
+          py = temppy
+          dest = i
+          isFound = 1
+          lastClick = 1
+        EndIf
+      EndIf
+    EndIf
+  EndFor
+  If isfound = 0 Then
+    temppx = 840
+    While lastfound = 0
+      temppy = k1*temppx + m1
+      If (k2old*temppx-temppy+m2old)*(k2old*x2-y2+m2old)>0 Then
+        px = temppx
+        py = temppy
+        lastfound = 1
+      Else
+        temppx = -40
+      EndIf
+    EndWhile
+  EndIf
+  speed = Math.SquareRoot(Math.Power(px-x1,2)+Math.Power(py-y1,2))
+  speed = speed*speedcorection
+  x2 = x1
+  y2 = y1
+EndSub
+
+'' --->                                                                                                                                                                                                  FIND FIRST INTERSECTION
+Sub FindFirstIntersection
+  isfound = 0
+  px = 2000
+  py = 2000
+  count = Array.GetItemCount(obstacles)
+  For i = 1 To count
+    x3 = obstacles[i][1][1]
+    y3 = obstacles[i][1][2]
+    x4 = obstacles[i][2][1]
+    y4 = obstacles[i][2][2]
+    If x2 = x1 Then
+      x1 = x1+0.005
+    EndIf
+    If x4 = x3 Then
+      x3 = x3+0.005
+    EndIf
+    k1 = (y2-y1)/(x2-x1)
+    m1 = (y1*x2 - y2*x1)/(x2-x1)
+    k2 = (y4-y3)/(x4-x3)
+    m2 = (y3*x4 - y4*x3)/(x4-x3)  
+    If k1=k2 Then
+      k2 = k2 + 0.00000000000006  
+    EndIf
+    temppx=(-1)*(m1-m2)/(k1-k2)
+    temppy=(-1)*((-k2)*temppx-m2)    
+    If (x1<x2 and x2<temppx) or (x1>x2 and x2>temppx) Or (y1>y2 and y2>temppy) Or (y1<y2 and y2<temppy) Then     ''Check if P e v posokata na dvijenie
+      If (x3<temppx and temppx<x4) or (x3>temppx and temppx>x4) Or (y3<temppy and temppy<y4) or (y3>temppy and temppy>y4) Then ''Check if P leji vyrhu blokcheto
+        If Math.Abs(temppx - x1) < Math.Abs(px - x1) Then     ''Check if blokcheto e po-blizo ot prednoto
+          px = temppx
+          py = temppy
+          dest = i
+          isfound = 1
+          lastfound = 0
+        EndIf
+      EndIf
+    EndIf
+  EndFor
+  If isfound=0 Then
+    deltamousex = x2-x1
+    deltamousey = y2-y1
+    px = x2 + deltamousex*4
+    py = y2 + deltamousey*4
+    lastfound = 1
+  EndIf
+  speed = Math.SquareRoot(Math.Power(px-x2,2)+Math.Power(py-y2,2))
+  speed = speed*speedcorection
+EndSub
+
+'' --->                                                                                                                                                                                                  MOUSE EVENTS
+Sub OnMouseMove
+  If release = 0 Then
+    x1 = GraphicsWindow.MouseX
+    y1 = GraphicsWindow.MouseY
+    deltaMouse = Math.Abs(Math.SquareRoot(Math.Power(x2-x1,2)+Math.Power(y2-y1,2)))
+    If ballplaced = 1 And deltaMouse > 10 Then
+      FindFirstIntersection()
+      Shapes.Move(sight, px-4, py-4)
+    EndIf
+  EndIf
+EndSub
+Sub OnMouseDown
+  If showcontrol = 1 Then
+    Controls.HideControl(lay1)
+    Controls.HideControl(lay2)
+    Controls.HideControl(lay3)
+    Controls.HideControl(lay4)
+    Controls.HideControl(lay5)
+    showcontrol = showcontrol*(-1)
+  EndIf
+  x2 = GraphicsWindow.MouseX
+  y2 = GraphicsWindow.MouseY
+  Shapes.Move(ball, x2-7, y2-7)
+  ballplaced = 1
+  release = 0
+EndSub
+Sub OnMouseUp
+  release = 1
+  x1 = GraphicsWindow.MouseX
+  y1 = GraphicsWindow.MouseY
+  deltaMouse = Math.Abs(Math.SquareRoot(Math.Power(x2-x1,2)+Math.Power(y2-y1,2)))
+  If deltaMouse > 10 Then
+    FindFirstIntersection()
+    Main()
+  EndIf
+EndSub
+
+'' --->                                                                                                                                                                                                  GUI AND OBSTACLES
+Sub DrawLevel
+  GraphicsWindow.Clear()
+  ChangeLayout = Controls.AddButton("Теми", 706, 5)
+  lay1 = Controls.AddButton("Изчистена", 672, 30)
+  lay2 = Controls.AddButton("Косомос", 685, 55)
+  lay3 = Controls.AddButton("Небула", 691, 80)
+  lay4 = Controls.AddButton("Изгрев", 693, 105)
+  lay5 = Controls.AddButton("Мост", 706, 130)
+  Controls.HideControl(lay1)
+  Controls.HideControl(lay2)
+  Controls.HideControl(lay3)
+  Controls.HideControl(lay4)
+  Controls.HideControl(lay5)
+  showcontrol = -1
+  GraphicsWindow.PenColor = colorobstacles[layout]
+  GraphicsWindow.BrushColor = colorobstacles[layout]
+  ball = Shapes.AddEllipse(14,14)
+  GraphicsWindow.BrushColor = "navy"
+  Shapes.Move(ball,-50,-50)
+  GraphicsWindow.DrawImage(bg[layout][0],bg[layout][1],bg[layout][2])
+  FillArray()
+  DrawObstacles()
+  GraphicsWindow.PenColor = colorsight[layout]
+  sight = Shapes.AddEllipse(8,8)
+  Shapes.Move(sight, -10, -10)
+EndSub
+
+Sub OnButtonClick
+  If Controls.LastClickedButton <> Restart then
+    If showcontrol = 1 Then
+      Controls.HideControl(lay1)
+      Controls.HideControl(lay2)
+      Controls.HideControl(lay3)
+      Controls.HideControl(lay4)
+      Controls.HideControl(lay5)
+    Else
+      Controls.ShowControl(lay1)
+      Controls.ShowControl(lay2)
+      Controls.ShowControl(lay3)
+      Controls.ShowControl(lay4)
+      Controls.ShowControl(lay5)
+    EndIf
+    showcontrol = showcontrol*(-1)
+  EndIf
+  If Controls.LastClickedButton = lay1 Then
+    layout = 0
+    DrawLevel()
+  EndIf
+  If Controls.LastClickedButton = lay2 Then
+    layout = 1
+    DrawLevel()
+  EndIf
+  If Controls.LastClickedButton = lay3 Then
+    layout = 2
+    DrawLevel()
+  EndIf 
+  If Controls.LastClickedButton = lay4 Then
+    layout = 3
+    DrawLevel()
+  EndIf 
+  If Controls.LastClickedButton = lay5 Then
+    layout = 4
+    DrawLevel()
+  EndIf  
+EndSub
+
+Sub DrawObstacles
+  GraphicsWindow.PenWidth = 10
+  GraphicsWindow.PenColor = colorobstacles[layout]
+  count = Array.GetItemCount(obstacles)
+  For i = 1 To count
+    obstacle[i] = Shapes.AddLine(obstacles[i][1][1],obstacles[i][1][2],obstacles[i][2][1],obstacles[i][2][2])
+  EndFor
+  GraphicsWindow.PenWidth = 3
+  GraphicsWindow.PenColor = "Gold"
+EndSub
+
+Sub HideObstacle
+  If destold > 0 then
+    Shapes.HideShape(obstacle[destold])
+    obstacles[destold][1][1] = 0
+    obstacles[destold][1][2] = 0
+    obstacles[destold][2][1] = 0
+    obstacles[destold][2][2] = 0
+  EndIf
+EndSub
+
+Sub ShowHint
+  GraphicsWindow.DrawLine(hint[1],hint[2],hint[3],hint[4])
+EndSub
+
+Sub FillArray
+  If level = 1 Then
+    obstacles[1][1][1] = 370
+    obstacles[1][1][2] = 190
+    obstacles[1][2][1] = 370
+    obstacles[1][2][2] = 310
+  EndIf
+  If level = 2 Then
+    obstacles[1][1][1] = 75
+    obstacles[1][1][2] = 190
+    obstacles[1][2][1] = 75
+    obstacles[1][2][2] = 310
+    obstacles[2][1][1] = 175
+    obstacles[2][1][2] = 190
+    obstacles[2][2][1] = 175
+    obstacles[2][2][2] = 310
+    obstacles[3][1][1] = 275
+    obstacles[3][1][2] = 190
+    obstacles[3][2][1] = 275
+    obstacles[3][2][2] = 310
+    obstacles[4][1][1] = 375
+    obstacles[4][1][2] = 190
+    obstacles[4][2][1] = 375
+    obstacles[4][2][2] = 310
+    obstacles[5][1][1] = 475
+    obstacles[5][1][2] = 190
+    obstacles[5][2][1] = 475
+    obstacles[5][2][2] = 310
+    obstacles[6][1][1] = 575
+    obstacles[6][1][2] = 190
+    obstacles[6][2][1] = 575
+    obstacles[6][2][2] = 310
+    obstacles[7][1][1] = 675
+    obstacles[7][1][2] = 190
+    obstacles[7][2][1] = 675
+    obstacles[7][2][2] = 310
+  EndIf
+  If level = 3 Then
+    obstacles[1][1][1] = 220
+    obstacles[1][1][2] = 190
+    obstacles[1][2][1] = 220
+    obstacles[1][2][2] = 310
+    obstacles[2][1][1] = 520
+    obstacles[2][1][2] = 190
+    obstacles[2][2][1] = 520
+    obstacles[2][2][2] = 310
+    obstacles[3][1][1] = 310
+    obstacles[3][1][2] = 100
+    obstacles[3][2][1] = 430
+    obstacles[3][2][2] = 100
+    obstacles[4][1][1] = 310
+    obstacles[4][1][2] = 400
+    obstacles[4][2][1] = 430
+    obstacles[4][2][2] = 400
+  EndIf
+  If level = 4 Then
+    hint[1] = 462
+    hint[2] = 197
+    hint[3] = 364
+    hint[4] = 235
+    obstacles[1][1][1] = 509
+    obstacles[1][1][2] = 126
+    obstacles[1][2][1] = 576
+    obstacles[1][2][2] = 226
+    obstacles[2][1][1] = 299
+    obstacles[2][1][2] = 341
+    obstacles[2][2][1] = 364
+    obstacles[2][2][2] = 442
+    obstacles[3][1][1] = 657
+    obstacles[3][1][2] = 241
+    obstacles[3][2][1] = 647
+    obstacles[3][2][2] = 361
+    obstacles[4][1][1] = 366
+    obstacles[4][1][2] = 137
+    obstacles[4][2][1] = 486
+    obstacles[4][2][2] = 134
+    obstacles[5][1][1] = 75
+    obstacles[5][1][2] = 277
+    obstacles[5][2][1] = 167
+    obstacles[5][2][2] = 355
+    obstacles[6][1][1] = 187
+    obstacles[6][1][2] = 62
+    obstacles[6][2][1] = 306
+    obstacles[6][2][2] = 43
+    obstacles[7][1][1] = 489
+    obstacles[7][1][2] = 458
+    obstacles[7][2][1] = 605
+    obstacles[7][2][2] = 426
+    obstacles[8][1][1] = 552
+    obstacles[8][1][2] = 31
+    obstacles[8][2][1] = 672
+    obstacles[8][2][2] = 43
+  EndIf
+EndSub
+    
